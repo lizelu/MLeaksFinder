@@ -16,21 +16,26 @@
 #import <FBRetainCycleDetector/FBRetainCycleDetector.h>
 #endif
 
+//需要为NSObject关联的属性的key
 static const void *const kViewStackKey = &kViewStackKey;
 static const void *const kParentPtrsKey = &kParentPtrsKey;
+
 const void *const kLatestSenderKey = &kLatestSenderKey;
 
 @implementation NSObject (MemoryLeak)
 
 - (BOOL)willDealloc {
+    //判断要检查的Class是否在白名单里，如果在就不检查
     NSString *className = NSStringFromClass([self class]);
     if ([[NSObject classNamesWhitelist] containsObject:className])
         return NO;
     
+    //最后发送消息的key, 也不做检查
     NSNumber *senderPtr = objc_getAssociatedObject([UIApplication sharedApplication], kLatestSenderKey);
     if ([senderPtr isEqualToNumber:@((uintptr_t)self)])
         return NO;
     
+    //检查内存泄露
     __weak id weakSelf = self;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(2 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         __strong id strongSelf = weakSelf;
@@ -44,6 +49,7 @@ const void *const kLatestSenderKey = &kLatestSenderKey;
     if ([MLeakedObjectProxy isAnyObjectLeakedAtPtrs:[self parentPtrs]]) {
         return;
     }
+    
     [MLeakedObjectProxy addLeakedObject:self];
     
     NSString *className = NSStringFromClass([self class]);
@@ -142,6 +148,12 @@ const void *const kLatestSenderKey = &kLatestSenderKey;
 #endif
 }
 
+
+/**
+ 内存泄露检查的白名单
+
+ @return 返回白名单的集合
+ */
 + (NSMutableSet *)classNamesWhitelist
 {
     static NSMutableSet *whitelist = nil;

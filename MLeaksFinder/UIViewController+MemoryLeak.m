@@ -16,6 +16,7 @@ const void *const kHasBeenPoppedKey = &kHasBeenPoppedKey;
 
 @implementation UIViewController (MemoryLeak)
 
+
 + (void)load {
     static dispatch_once_t onceToken;
     dispatch_once(&onceToken, ^{
@@ -28,6 +29,7 @@ const void *const kHasBeenPoppedKey = &kHasBeenPoppedKey;
 - (void)swizzled_viewDidDisappear:(BOOL)animated {
     [self swizzled_viewDidDisappear:animated];
     
+    //如果已经被POP,则只需willDealloc
     if ([objc_getAssociatedObject(self, kHasBeenPoppedKey) boolValue]) {
         [self willDealloc];
     }
@@ -35,10 +37,17 @@ const void *const kHasBeenPoppedKey = &kHasBeenPoppedKey;
 
 - (void)swizzled_viewWillAppear:(BOOL)animated {
     [self swizzled_viewWillAppear:animated];
-    
+
+    //关联kHasBeenPoppedKey，其中存储的是BOOL值，用来标记是否已经被POP
     objc_setAssociatedObject(self, kHasBeenPoppedKey, @(NO), OBJC_ASSOCIATION_RETAIN);
 }
 
+
+/**
+ 检测dismiss
+
+ @return
+ */
 - (void)swizzled_dismissViewControllerAnimated:(BOOL)flag completion:(void (^)(void))completion {
     [self swizzled_dismissViewControllerAnimated:flag completion:completion];
     
